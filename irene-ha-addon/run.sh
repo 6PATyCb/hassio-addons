@@ -27,16 +27,30 @@ echo "=== Irene Addon Starting ==="
 echo "HA API URL: $HA_URL"
 echo "LOG_LEVEL: $LOG_LEVEL"
 
+# === ИНИЦИАЛИЗАЦИЯ ПАПОК ===
+# Гарантированно создаем папки на хосте (в /config), чтобы ls -A не падал с ошибкой
+mkdir -p /config/irene_options
+mkdir -p /config/irene_plugins
+
 # ПРОВЕРКА ПЕРВОГО ЗАПУСКА для options
 # ls -A выводит все файлы (включая скрытые). Если вывод пустой, папка пуста.
 if [ -z "$(ls -A /config/irene_options)" ]; then
-    echo " Первый запуск: Копируем файлы по умолчанию для options..."
-    # cp -a сохраняет права и структуру, -n запрещает перезапись существующих файлов
-    # /. в конце пути означает "скопировать содержимое папки, а не саму папку"
+    echo "[INFO] Первый запуск: Копируем файлы по умолчанию для options..."
     cp -an /app/irene/options/. /config/irene_options/
-    cp -an /app/irene/plugins/. /config/irene_plugins/
-    echo " Копирование options завершено..."
+    echo "[INFO] Копирование options завершено."
+else
+    echo "[INFO] Папка options уже содержит файлы. Пропускаем копирование."
 fi
+
+# ПРОВЕРКА ПЕРВОГО ЗАПУСКА для plugins
+if [ -z "$(ls -A /config/irene_plugins)" ]; then
+    echo "[INFO] Первый запуск: Копируем файлы по умолчанию для plugins..."
+    cp -an /app/irene/plugins/. /config/irene_plugins/
+    echo "[INFO] Копирование plugins завершено."
+else
+    echo "[INFO] Папка plugins уже содержит файлы. Пропускаем копирование."
+fi
+
 # Удаляем оригинальные папки внутри образа, чтобы они не конфликтовали со ссылками
 rm -rf /app/irene/options
 rm -rf /app/irene/plugins
@@ -50,32 +64,51 @@ ln -s /config/irene_plugins /app/irene/plugins
 echo "=== Проверка созданных ссылок ==="
 ls -la /app/irene/ | grep -E "options|plugins"
 
+# === ПОСТОЯННОЕ ВИРТУАЛЬНОЕ ОКРУЖЕНИЕ ===
+echo "=== Настройка Python-окружения ==="
 
-# === УСТАНОВКА ПОЛЬЗОВАТЕЛЬСКИХ ЗАВИСИМОСТЕЙ ===
-echo "=== Проверка Python-зависимостей для плагинов ==="
+VENV_DIR="/config/irene_options/venv"
+
+# Создаем venv только при ПЕРВОМ запуске
+# Флаг --system-site-packages позволяет venv видеть пакеты из Docker-образа
+if [ ! -d "$VENV_DIR" ]; then
+    echo "[INFO] Первый запуск: Создаем виртуальное окружение (это займет время)..."
+    python3 -m venv --system-site-packages "$VENV_DIR"
+else
+    echo "[INFO] Виртуальное окружение уже существует. Используем его."
+fi
+
+# Активируем venv
+# Теперь все команды pip будут работать внутри него
+source "$VENV_DIR/bin/activate"
+
+# === УСТАНОВКА ЗАВИСИМОСТЕЙ ===
+echo "=== Проверка Python-зависимостей ==="
+
+# Устанавливаем базовые зависимости (из Git-репозитория)
+# Pip увидит, что они уже есть в system-site-packages, и пропустит их
+pip install -q --upgrade pip
+pip install -q -r /app/irene/requirements-docker.txt
 
 # Создаем файл для пользовательских зависимостей, если его нет
 CUSTOM_REQ="/config/irene_options/requirements-custom.txt"
 if [ ! -f "$CUSTOM_REQ" ]; then
     echo "# Добавьте сюда зависимости для ваших кастомных плагинов (каждая с новой строки)" > "$CUSTOM_REQ"
     echo "# Например: requests==2.31.0" >> "$CUSTOM_REQ"
-    echo "Создан файл для пользовательских зависимостей: $CUSTOM_REQ"
+    echo "[INFO] Создан файл для пользовательских зависимостей: $CUSTOM_REQ"
 fi
-
-# Устанавливаем базовые зависимости (из Git-репозитория) - быстро, т.к. уже установлены
-pip3 install --break-system-packages -q -r /app/irene/requirements-docker.txt
 
 # Устанавливаем пользовательские зависимости (если файл не пустой)
 # grep -q проверяет, есть ли в файле что-то кроме комментариев и пустых строк
 if grep -qE '^[^#[:space:]]' "$CUSTOM_REQ" 2>/dev/null; then
-    echo "Найдены пользовательские зависимости. Устанавливаем..."
-    pip3 install --break-system-packages -r "$CUSTOM_REQ"
+    echo "[INFO] Найдены пользовательские зависимости. Устанавливаем/обновляем..."
+    pip install -r "$CUSTOM_REQ"
 else
-    echo "Пользовательские зависимости не найдены. Пропускаем."
+    echo "[INFO] Пользовательские зависимости не найдены. Пропускаем."
 fi
 
 # Переходим в папку с кодом
 cd /app/irene
 
-# Запуск приложения (ЗАМЕНИТЕ main.py на реальный файл входа в Irene, если нужно!)
+# Запуск приложения
 exec python3 runva_webapi.py
