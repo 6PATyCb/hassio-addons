@@ -1,5 +1,5 @@
 name: "Irene HA Addon"
-version: "1.0.0"
+version: "1.0.1"
 slug: "irene_ha_addon"
 description: "Запускает приложение Irene, загружая его исходный код"
 arch:
