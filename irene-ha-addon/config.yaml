@@ -1,7 +1,7 @@
 name: "Irene HA Addon"
-version: "1.0.2"
+version: "1.0.3"
 slug: "irene_ha_addon"
-description: "Запускает приложение Irene, загружая его исходный код"
+description: "Запускает приложение Irene, загружая его исходный код из репозитория автора"
 arch:
   - amd64
   - aarch64

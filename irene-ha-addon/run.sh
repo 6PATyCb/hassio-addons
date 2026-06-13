@@ -51,6 +51,29 @@ echo "=== Проверка созданных ссылок ==="
 ls -la /app/irene/ | grep -E "options|plugins"
 
 
+# === УСТАНОВКА ПОЛЬЗОВАТЕЛЬСКИХ ЗАВИСИМОСТЕЙ ===
+echo "=== Проверка Python-зависимостей для плагинов ==="
+
+# Создаем файл для пользовательских зависимостей, если его нет
+CUSTOM_REQ="/config/irene_options/requirements-custom.txt"
+if [ ! -f "$CUSTOM_REQ" ]; then
+    echo "# Добавьте сюда зависимости для ваших кастомных плагинов (каждая с новой строки)" > "$CUSTOM_REQ"
+    echo "# Например: requests==2.31.0" >> "$CUSTOM_REQ"
+    echo "Создан файл для пользовательских зависимостей: $CUSTOM_REQ"
+fi
+
+# Устанавливаем базовые зависимости (из Git-репозитория) - быстро, т.к. уже установлены
+pip3 install --break-system-packages -q -r /app/irene/requirements-docker.txt
+
+# Устанавливаем пользовательские зависимости (если файл не пустой)
+# grep -q проверяет, есть ли в файле что-то кроме комментариев и пустых строк
+if grep -qE '^[^#[:space:]]' "$CUSTOM_REQ" 2>/dev/null; then
+    echo "Найдены пользовательские зависимости. Устанавливаем..."
+    pip3 install --break-system-packages -r "$CUSTOM_REQ"
+else
+    echo "Пользовательские зависимости не найдены. Пропускаем."
+fi
+
 # Переходим в папку с кодом
 cd /app/irene
 
