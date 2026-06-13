@@ -28,24 +28,39 @@ echo "HA API URL: $HA_URL"
 echo "LOG_LEVEL: $LOG_LEVEL"
 
 # === ИНИЦИАЛИЗАЦИЯ ПАПОК ===
-# Гарантированно создаем папки на хосте (в /config), чтобы ls -A не падал с ошибкой
-mkdir -p /config/irene_options
-mkdir -p /config/irene_plugins
+# Новая структура: все данные в /config/irene/
+IRENE_DATA_DIR="/config/irene"
+
+# Гарантированно создаем корневую папку и подпапки
+mkdir -p "$IRENE_DATA_DIR/options"
+mkdir -p "$IRENE_DATA_DIR/plugins"
+
+# МИГРАЦИЯ: Переносим данные из старых папок (если они есть)
+if [ -d "/config/irene_options" ] && [ ! -L "/config/irene_options" ]; then
+    echo "[INFO] Обнаружены старые данные в /config/irene_options. Переносим в новую структуру..."
+    cp -an /config/irene_options/. "$IRENE_DATA_DIR/options/" 2>/dev/null || true
+    rm -rf /config/irene_options
+fi
+
+if [ -d "/config/irene_plugins" ] && [ ! -L "/config/irene_plugins" ]; then
+    echo "[INFO] Обнаружены старые данные в /config/irene_plugins. Переносим в новую структуру..."
+    cp -an /config/irene_plugins/. "$IRENE_DATA_DIR/plugins/" 2>/dev/null || true
+    rm -rf /config/irene_plugins
+fi
 
 # ПРОВЕРКА ПЕРВОГО ЗАПУСКА для options
-# ls -A выводит все файлы (включая скрытые). Если вывод пустой, папка пуста.
-if [ -z "$(ls -A /config/irene_options)" ]; then
+if [ -z "$(ls -A "$IRENE_DATA_DIR/options")" ]; then
     echo "[INFO] Первый запуск: Копируем файлы по умолчанию для options..."
-    cp -an /app/irene/options/. /config/irene_options/
+    cp -an /app/irene/options/. "$IRENE_DATA_DIR/options/"
     echo "[INFO] Копирование options завершено."
 else
     echo "[INFO] Папка options уже содержит файлы. Пропускаем копирование."
 fi
 
 # ПРОВЕРКА ПЕРВОГО ЗАПУСКА для plugins
-if [ -z "$(ls -A /config/irene_plugins)" ]; then
+if [ -z "$(ls -A "$IRENE_DATA_DIR/plugins")" ]; then
     echo "[INFO] Первый запуск: Копируем файлы по умолчанию для plugins..."
-    cp -an /app/irene/plugins/. /config/irene_plugins/
+    cp -an /app/irene/plugins/. "$IRENE_DATA_DIR/plugins/"
     echo "[INFO] Копирование plugins завершено."
 else
     echo "[INFO] Папка plugins уже содержит файлы. Пропускаем копирование."
@@ -56,10 +71,8 @@ rm -rf /app/irene/options
 rm -rf /app/irene/plugins
 
 # Создаем символические ссылки
-# Теперь приложение Irene будет думать, что работает с /app/irene/options,
-# но на самом деле оно будет читать/писать в /config/irene_options
-ln -s /config/irene_options /app/irene/options
-ln -s /config/irene_plugins /app/irene/plugins
+ln -s "$IRENE_DATA_DIR/options" /app/irene/options
+ln -s "$IRENE_DATA_DIR/plugins" /app/irene/plugins
 
 echo "=== Проверка созданных ссылок ==="
 ls -la /app/irene/ | grep -E "options|plugins"
@@ -67,7 +80,7 @@ ls -la /app/irene/ | grep -E "options|plugins"
 # === ПОСТОЯННОЕ ВИРТУАЛЬНОЕ ОКРУЖЕНИЕ ===
 echo "=== Настройка Python-окружения ==="
 
-VENV_DIR="/config/irene_options/venv"
+VENV_DIR="$IRENE_DATA_DIR/venv"
 
 # Создаем venv только при ПЕРВОМ запуске
 # Флаг --system-site-packages позволяет venv видеть пакеты из Docker-образа
@@ -91,7 +104,7 @@ pip install -q --upgrade pip
 pip install -q -r /app/irene/requirements-docker.txt
 
 # Создаем файл для пользовательских зависимостей, если его нет
-CUSTOM_REQ="/config/irene_options/requirements-custom.txt"
+CUSTOM_REQ="$IRENE_DATA_DIR/requirements-custom.txt"
 if [ ! -f "$CUSTOM_REQ" ]; then
     echo "# Добавьте сюда зависимости для ваших кастомных плагинов (каждая с новой строки)" > "$CUSTOM_REQ"
     echo "# Например: requests==2.31.0" >> "$CUSTOM_REQ"
