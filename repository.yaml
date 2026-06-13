@@ -1,0 +1,4 @@
+# https://developers.home-assistant.io/docs/apps/repository#repository-configuration
+name: 6PATyCb HA Addons
+url: "https://github.com/6PATyCb/hassio-addons"
+maintainer: 6PATyCb
