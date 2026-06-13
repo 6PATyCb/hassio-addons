@@ -8,6 +8,7 @@ arch:
 startup: application
 boot: auto
 init: false
+webui: https://[HOST]:[PORT:5003]
 ports:
   5003/tcp: 5003
 homeassistant_api: true 
