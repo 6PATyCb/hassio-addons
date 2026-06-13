@@ -8,16 +8,12 @@ arch:
 startup: application
 boot: auto
 init: false
-# Открываем порт для ваших веб-эндпоинтов (замените 8000 на реальный порт Irene)
 ports:
   5003/tcp: 5003
-# КРИТИЧЕСКИ ВАЖНО: Дает приложению доступ к API Home Assistant через токен супервизора
 homeassistant_api: true 
-
-# Настройки, которые можно будет менять в UI аддона
 options:
   log_level: "info"
-  irene_branch: "main" # Ветка или тег для клонирования
+  irene_branch: "master"
 schema:
   log_level: "list(debug|info|warning|error|fatal)"
   irene_branch: "str"
