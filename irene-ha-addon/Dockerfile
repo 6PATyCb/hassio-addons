@@ -34,7 +34,8 @@ RUN if [ -f /app/irene/requirements-docker.txt ]; then \
 	
 # активируем файлы настроек Ирины адаптированные под докер	
 RUN mv /app/irene/runva_webapi_docker.json /app/irene/runva_webapi.json && \
-mv /app/irene/options_docker /app/irene/options
+mkdir /config && \
+mv /app/irene/options_docker /app/irene/options 
 
 #RUN mv /app/irene/plugins /app/irene/plugins_orig && mv /app/irene/docker_plugins /app/irene/plugins
 

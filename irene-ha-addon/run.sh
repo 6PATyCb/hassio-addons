@@ -27,6 +27,30 @@ echo "=== Irene Addon Starting ==="
 echo "HA API URL: $HA_URL"
 echo "LOG_LEVEL: $LOG_LEVEL"
 
+# ПРОВЕРКА ПЕРВОГО ЗАПУСКА для options
+# ls -A выводит все файлы (включая скрытые). Если вывод пустой, папка пуста.
+if [ -z "$(ls -A /config/irene_options)" ]; then
+    echo " Первый запуск: Копируем файлы по умолчанию для options..."
+    # cp -a сохраняет права и структуру, -n запрещает перезапись существующих файлов
+    # /. в конце пути означает "скопировать содержимое папки, а не саму папку"
+    cp -an /app/irene/options/. /config/irene_options/
+    cp -an /app/irene/plugins/. /config/irene_plugins/
+    echo " Копирование options завершено..."
+fi
+# Удаляем оригинальные папки внутри образа, чтобы они не конфликтовали со ссылками
+rm -rf /app/irene/options
+rm -rf /app/irene/plugins
+
+# Создаем символические ссылки
+# Теперь приложение Irene будет думать, что работает с /app/irene/options,
+# но на самом деле оно будет читать/писать в /config/irene_options
+ln -s /config/irene_options /app/irene/options
+ln -s /config/irene_plugins /app/irene/plugins
+
+echo "=== Проверка созданных ссылок ==="
+ls -la /app/irene/ | grep -E "options|plugins"
+
+
 # Переходим в папку с кодом
 cd /app/irene
 
