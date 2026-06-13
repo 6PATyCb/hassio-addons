@@ -34,13 +34,15 @@ RUN if [ -f /app/irene/requirements-docker.txt ]; then \
 	
 # активируем файлы настроек Ирины адаптированные под докер	
 RUN mv /app/irene/runva_webapi_docker.json /app/irene/runva_webapi.json && \
-mkdir /config && \
+mkdir /config && mkdir /app/irene/vosk_models && \
 mv /app/irene/options_docker /app/irene/options 
 
 #RUN mv /app/irene/plugins /app/irene/plugins_orig && mv /app/irene/docker_plugins /app/irene/plugins
 
 # Копируем скрипт запуска
 COPY run.sh /
+
+ENV VOSK_MODEL_PATH=/config/irene/vosk_models
 
 # КРИТИЧЕСКИ ВАЖНО: Конвертируем CRLF (Windows) в LF (Linux) и даем права на выполнение
 RUN sed -i 's/\r$//' /run.sh && chmod a+x /run.sh
