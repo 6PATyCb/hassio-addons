@@ -7,6 +7,7 @@ arch:
   - aarch64
 startup: "application"
 boot: "auto"
+init: false
 options:
   target_1: "https://192.168.1.10:5003"
   target_2: "https://192.168.1.11:5003"
