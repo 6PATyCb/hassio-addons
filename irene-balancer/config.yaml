@@ -11,7 +11,7 @@ init: false
 options:
   target_1: "https://192.168.1.10:5003"
   target_2: "https://192.168.1.11:5003"
-  domain: "home.local"
+  domain: "homeassistant.local"
   listen_port: 5013
 schema:
   target_1: "str"

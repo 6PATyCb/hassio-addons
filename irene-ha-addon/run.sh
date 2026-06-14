@@ -9,8 +9,6 @@ else
     export HA_URL="${HA_URL:-http://host.docker.internal:8123/api}"
 fi
 
-echo "VOSK_MODEL_PATH=${VOSK_MODEL_PATH}"
-
 # 2. Читаем настройки из options.json
 export LOG_LEVEL="info"
 if [ -f /data/options.json ]; then
@@ -24,6 +22,7 @@ fi
 echo "=== Irene Addon Starting ==="
 echo "HA API URL: $HA_URL"
 echo "LOG_LEVEL: $LOG_LEVEL"
+echo "VOSK_MODEL_PATH: ${VOSK_MODEL_PATH}"
 
 # === ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ В /config ===
 IRENE_DATA_DIR="/config/irene"
