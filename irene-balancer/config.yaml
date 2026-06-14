@@ -1,5 +1,5 @@
 name: "Irene-Voice-Assistant-Balancer"
-version: "0.1.0"
+version: "0.1.1"
 slug: "irene_balancer"
 description: "Балансировщик https для нескольких копий голосового помощника Ирины"
 arch:
@@ -23,5 +23,5 @@ ports:
 ports_description:
   5013/tcp: "HTTPS Web Interface & WebSocket (Измените внешний порт, если 5013 занят)"
 webui: https://[HOST]:[PORT:5013]/status.html
-map:
-  - ssl
+#map:
+#  - ssl
