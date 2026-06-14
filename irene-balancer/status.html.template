@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Irene Balancer Status</title>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 40px; background: #f0f2f5; color: #333; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h1 { margin-top: 0; color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
+        .header-actions { float: right; margin-top: -50px; }
+        .btn { display: inline-block; padding: 10px 20px; background: #3498db; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; transition: background 0.3s; }
+        .btn:hover { background: #2980b9; }
+        .backend { padding: 20px; margin: 15px 0; border-radius: 8px; border-left: 5px solid #ccc; background: #f9f9f9; }
+        .backend.primary { border-left-color: #3498db; }
+        .backend.backup { border-left-color: #e67e22; }
+        .backend h3 { margin: 0 0 10px 0; }
+        .backend code { background: #e8e8e8; padding: 2px 6px; border-radius: 3px; font-size: 0.9em; }
+        .status { display: inline-block; padding: 6px 12px; border-radius: 4px; font-weight: bold; font-size: 0.9em; }
+        .status.up { background: #27ae60; color: white; }
+        .status.down { background: #e74c3c; color: white; }
+        .status.checking { background: #f39c12; color: white; }
+        .stats { background: #2c3e50; color: #ecf0f1; padding: 20px; border-radius: 8px; margin-top: 25px; }
+        .stats h3 { margin-top: 0; color: #3498db; }
+        .stats pre { margin: 0; font-family: 'Consolas', monospace; font-size: 0.9em; }
+        .footer { margin-top: 20px; text-align: center; color: #7f8c8d; font-size: 0.85em; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 Irene Balancer Status</h1>
+        <div class="header-actions">
+            <a href="/" class="btn">🌐 Go to Site</a>
+        </div>
+        
+        <div class="backend primary">
+            <h3>🟦 Primary Server</h3>
+            <p><code>@@BACKEND_1@@</code></p>
+            <p>Status: <span id="status-primary" class="status checking">Checking...</span></p>
+        </div>
+        
+        <div class="backend backup">
+            <h3>🟧 Backup Server</h3>
+            <p><code>@@BACKEND_2@@</code></p>
+            <p>Status: <span id="status-backup" class="status checking">Checking...</span></p>
+        </div>
+        
+        <div class="stats">
+            <h3>📊 Nginx Statistics</h3>
+            <pre id="nginx-stats">Loading...</pre>
+        </div>
+        
+        <div class="footer">
+            Last updated: <span id="last-update">-</span> (auto-refresh every 5s)
+        </div>
+    </div>
+
+    <script>
+        async function checkBackend(url, statusId) {
+            const statusEl = document.getElementById(statusId);
+            try {
+                // Добавляем timestamp для предотвращения кэширования
+                const timestamp = new Date().getTime();
+                const response = await fetch(`${url}?_t=${timestamp}`, { 
+                    method: 'GET',
+                    cache: 'no-cache'
+                });
+                
+                // Если бэкенд жив, он ответит (200, 401, 404 - не важно).
+                // Если мертв, Nginx вернет 502 Bad Gateway.
+                if (response.status === 502 || response.status === 504) {
+                    statusEl.textContent = 'DOWN';
+                    statusEl.className = 'status down';
+                } else {
+                    statusEl.textContent = 'UP (' + response.status + ')';
+                    statusEl.className = 'status up';
+                }
+            } catch (error) {
+                statusEl.textContent = 'DOWN';
+                statusEl.className = 'status down';
+            }
+        }
+
+        async function updateStats() {
+            try {
+                const timestamp = new Date().getTime();
+                const response = await fetch(`/nginx-status?_t=${timestamp}`);
+                const text = await response.text();
+                document.getElementById('nginx-stats').textContent = text;
+            } catch (error) {
+                document.getElementById('nginx-stats').textContent = 'Error loading stats: ' + error.message;
+            }
+        }
+
+        function updateAll() {
+            checkBackend('/check-primary', 'status-primary');
+            checkBackend('/check-backup', 'status-backup');
+            updateStats();
+            document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
+        }
+
+        updateAll();
+        setInterval(updateAll, 5000);
+    </script>
+</body>
+</html>

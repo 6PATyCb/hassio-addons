@@ -1,0 +1,26 @@
+name: "Irene-Voice-Assistant-Balancer"
+version: "0.1.0"
+slug: "irene_balancer"
+description: "Балансировщик https для нескольких копий голосового помощника Ирины"
+arch:
+  - amd64
+  - aarch64
+startup: "application"
+boot: "auto"
+options:
+  target_1: "https://192.168.1.10:5003"
+  target_2: "https://192.168.1.11:5003"
+  domain: "home.local"
+  listen_port: 5013
+schema:
+  target_1: "str"
+  target_2: "str"
+  domain: "str"
+  listen_port: "int(1024,65535)"
+ports:
+  5013/tcp: 5013
+ports_description:
+  5013/tcp: "HTTPS Web Interface & WebSocket (Измените внешний порт, если 5013 занят)"
+webui: https://[HOST]:[PORT:5013]/status.html
+map:
+  - ssl

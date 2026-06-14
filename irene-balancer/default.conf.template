@@ -1,0 +1,105 @@
+upstream backend_pool {
+    server @@BACKEND_1_HOST_PORT@@ max_fails=2 fail_timeout=5s;
+    server @@BACKEND_2_HOST_PORT@@ backup;
+}
+
+server {
+    listen @@LISTEN_PORT@@ ssl;
+    server_name @@DOMAIN@@;
+
+    ssl_certificate /ssl/localhost.crt;
+    ssl_certificate_key /ssl/localhost.key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers on;
+
+    location / {
+        proxy_pass @@BACKEND_SCHEME@@://backend_pool;
+        
+        # Заголовки для корректной работы с портами и редиректами
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $http_host;
+        proxy_set_header X-Forwarded-Port $server_port;
+        
+        # ======================================================================
+        # ПОДДЕРЖКА WEBSOCKET (WSS)
+        # ======================================================================
+        proxy_http_version 1.1; # WebSocket требует HTTP/1.1
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        
+        # Увеличиваем таймаут чтения. По умолчанию 60с, из-за этого WS отваливается.
+        # Ставим 1 час (3600с), чтобы долгие WS-соединения не рвались.
+        proxy_read_timeout 3600s;
+        proxy_connect_timeout 5s;
+
+        # Настройки для HTTPS бэкендов
+        proxy_ssl_server_name on;
+        proxy_ssl_verify off;
+
+        # ======================================================================
+        # ПЕРЕПИСЫВАНИЕ РЕДИРЕКТОВ И ССЫЛОК
+        # ======================================================================
+        proxy_redirect https://@@DOMAIN@@:443/ https://@@DOMAIN@@:@@LISTEN_PORT@@/;
+        proxy_redirect http://@@DOMAIN@@:80/ https://@@DOMAIN@@:@@LISTEN_PORT@@/;
+        proxy_redirect https://@@DOMAIN@@/ https://@@DOMAIN@@:@@LISTEN_PORT@@/;
+
+        sub_filter 'https://@@DOMAIN@@:443' 'https://@@DOMAIN@@:@@LISTEN_PORT@@';
+        sub_filter 'http://@@DOMAIN@@:80' 'https://@@DOMAIN@@:@@LISTEN_PORT@@';
+        sub_filter 'https://@@DOMAIN@@/' 'https://@@DOMAIN@@:@@LISTEN_PORT@@/';
+        sub_filter_once off;
+        
+        # Убрали text/html (он по умолчанию), оставили только дополнительные типы
+        sub_filter_types application/json text/plain;
+    }
+	
+# ==============================================================================
+# СТРАНИЦА СТАТУСА И ПРОВЕРКА БЕКЕНДОВ
+# ==============================================================================
+
+# Страница статуса (отдаем наш сгенерированный HTML)
+location = /status.html {
+    root /usr/share/nginx/html;
+}
+
+# Встроенная статистика Nginx (активные соединения, запросы)
+location /nginx-status {
+    stub_status on;
+    allow 127.0.0.1;
+    allow 172.16.0.0/12;   # Docker network
+    allow 192.168.0.0/16;  # Local network
+    allow 10.0.0.0/8;      # Private network
+    deny all;
+}
+
+# Endpoint для проверки основного бэкенда
+location /check-primary {
+    proxy_pass @@BACKEND_SCHEME@@://@@BACKEND_1_HOST_PORT@@/;
+    proxy_ssl_server_name on;
+    proxy_ssl_verify off;
+    proxy_connect_timeout 3s;
+    proxy_read_timeout 5s;
+    
+    # Отключаем кэширование для проверок
+    add_header Cache-Control "no-cache, no-store, must-revalidate";
+    add_header Pragma "no-cache";
+    add_header Expires "0";
+}
+
+# Endpoint для проверки резервного бэкенда
+location /check-backup {
+    proxy_pass @@BACKEND_SCHEME@@://@@BACKEND_2_HOST_PORT@@/;
+    proxy_ssl_server_name on;
+    proxy_ssl_verify off;
+    proxy_connect_timeout 3s;
+    proxy_read_timeout 5s;
+    
+    # Отключаем кэширование для проверок
+    add_header Cache-Control "no-cache, no-store, must-revalidate";
+    add_header Pragma "no-cache";
+    add_header Expires "0";
+}
+	
+}
